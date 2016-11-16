@@ -1,0 +1,15 @@
+{
+  "name": "nashorn-uglifyjs2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "update-uglify": "yarn upgrade",
+    "extract-script": "yarn && ./node_modules/.bin/uglifyjs --self > uglify.min.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "uglifyjs": "^2.4.10"
+  }
+}
