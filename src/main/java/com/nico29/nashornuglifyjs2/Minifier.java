@@ -4,15 +4,18 @@ import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Minifier {
 
-    private static final int EOF = -1;
-    private static final int DEFAULT_BUFFER_SIZE = 1024 * 4;
-
-    public static void main (String[] args) {
+    public static void main(String[] args) {
         Minifier minifier = new Minifier();
         // setup the nashorn engine
         ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
@@ -28,23 +31,17 @@ public class Minifier {
             engine.eval(minifier.getResourceFileReader("/minify.js"));
         } catch (ScriptException e) {
             e.printStackTrace();
-            e.printStackTrace();
             System.exit(-1);
         }
-
-        // load the javascript file to minify
-        File codeToMinify = new File(args[0]);
 
         // prepare to call a javascript function
         Invocable invocable = (Invocable) engine;
 
         String minifiedCode = null;
         try {
-            minifiedCode = (String) invocable.invokeFunction("minify", minifier.getContentAsStringFromFile(codeToMinify));
-        } catch (Exception e) {
-            System.out.println("Unable to miniy the provided script");
+            minifiedCode = (String) invocable.invokeFunction("minify", minifier.getContentAsStringFromFile(args[0]));
+        } catch (NoSuchMethodException | IOException | ScriptException e) {
             e.printStackTrace();
-            System.exit(-1);
         }
 
         minifier.writeOutputToFile(minifiedCode, args[1]);
@@ -55,45 +52,37 @@ public class Minifier {
      * @param resourceName
      * @return reader
      */
-    private Reader getResourceFileReader (String resourceName) {
+    private Reader getResourceFileReader(String resourceName) {
         return new BufferedReader(new InputStreamReader(getClass().getResourceAsStream(resourceName)));
     }
 
     /**
      * Get the content from a file as a UTF-8 encoded String
-     * @param file
+     * @param name
      * @return the string content
      * @throws IOException
      */
-    private String getContentAsStringFromFile (File file) throws IOException {
-        StringWriter writer = new StringWriter();
-        BufferedReader reader = Files.newBufferedReader(file.toPath());
-
-        char[] buffer = new char[DEFAULT_BUFFER_SIZE];
-        int n;
-
-        while (EOF != (n = reader.read(buffer))) { writer.write(buffer, 0, n); }
-
-        return writer.toString();
+    private String getContentAsStringFromFile(String name) throws IOException {
+        if (name == null) {
+            System.err.println("Cannot access the file to minify");
+            System.exit(-1);
+        }
+        Path path = Paths.get(name);
+        File file = path != null ? path.toFile() : null;
+        if (file != null && file.isFile() && file.canRead()) {
+            return new String(Files.readAllBytes(path));
+        } else {
+            throw new IOException("Unable to read file");
+        }
     }
 
-    private void writeOutputToFile (String output, String ouputLocation) {
-        BufferedWriter writer = null;
+    private void writeOutputToFile(String output, String outputLocation) {
         try {
-            writer = new BufferedWriter(new FileWriter(ouputLocation));
-            writer.write(output);
+            Files.write(Paths.get(outputLocation), output.getBytes());
         } catch (IOException e) {
-            System.out.println("Cannot write output file");
+            System.err.println("Unable to write output file");
             e.printStackTrace();
             System.exit(-1);
-        } finally {
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 }
